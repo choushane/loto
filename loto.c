@@ -15,6 +15,15 @@ static int number = 37,port = 80;
 static char buff[4096],message[2048],data[2048];
 static int connfd = -1;
 static FILE *file;
+static struct loto *head=NULL;
+void sort_list(void);
+void comparison(char*);
+static struct loto {
+    int no;
+    char date[16];
+    int ball[6];
+    struct loto *next;
+};
 
 int open_tcp_client(char *ip_addr, unsigned short int port)
 {
@@ -144,9 +153,8 @@ void get_web(int sockfd)
 void get_information(void)
 {
     int sockfd,i = 1;
-
     file=fopen("/tmp/loto.txt","w");
-    while(i <= number)
+    while( i <= number)
     {    
         if ((sockfd = open_tcp_client(host,port)) < 0 )
         {
@@ -179,6 +187,73 @@ void get_information(void)
     fclose(file);
 
     printf("Total:[%d]%d\tOK!!\n",number,i);
+    sort_list();
+}
+
+int creat_link(char buffer[512])
+{
+    struct loto *now;
+    char time[8],day[16],number[64],other[8];
+    char one[4],two[4],three[4],four[4],five[4],six[4];
+
+    now = (struct loto*)malloc(sizeof(struct loto));
+
+    sscanf(buffer,"%s\t%s\t%s\t%s",time,day,number,other);
+    sscanf(number,"%[^,],%[^,],%[^,],%[^,],%[^,],%[^,]",one,two,three,four,five,six);
+
+    now->no=atoi(time);
+    strncpy(now->date,day,strlen(day));
+    now->ball[0]=atoi(one);
+    now->ball[1]=atoi(two);
+    now->ball[2]=atoi(three);
+    now->ball[3]=atoi(four);
+    now->ball[4]=atoi(five);
+    now->ball[5]=atoi(six);
+    now->ball[6]=atoi(other);
+
+    if(head != NULL)
+        now->next=head;
+    else
+        now->next=NULL;
+    head=now;
+   
+   return atoi(time); 
+}
+
+void sort_list(void)
+{
+    FILE *fp;
+    struct loto *now;
+    char buffer[512];
+    int number = 1,max = 0,i;
+
+    fp=fopen("/tmp/loto.txt","r");
+    while (fgets(buffer,sizeof(buffer),fp) != NULL)
+    {
+        if (creat_link(buffer) > max)
+            max = creat_link(buffer);
+    }
+    fclose(fp);
+
+    fp=fopen("/tmp/loto1.txt","w");
+    now=head;
+    for(i = 1;i <= max;i++)
+    {
+        while(now != NULL)
+        {
+            if(i == now->no)
+            {
+                fprintf(fp,"%04d\t%s\t%02d,%02d,%02d,%02d,%02d,%02d\t%02d\n",now->no,now->date,now->ball[0],now->ball[1],now->ball[2],now->ball[3],now->ball[4],now->ball[5],now->ball[6]);
+                break;
+            }
+            //printf("now->no = %d\n",now->no);
+            //printf("now->date = %s\n",now->date);
+            //printf("now->ball = %d,%d,%d,%d,%d,%d [%d]\n",now->ball[0],now->ball[1],now->ball[2],now->ball[3],now->ball[4],now->ball[5],now->ball[6]);
+            now=now->next;
+        }
+    }
+    fclose(fp);
+
 }
 
 void statistics(void)
@@ -187,14 +262,14 @@ void statistics(void)
     char buffer[512],time[8],day[8],number[32],other[4];
     char one[4],two[4],three[4],four[4],five[4],six[4];
     int i;
-    float ball[49] = {0},count = 0;
-    fp=fopen("/tmp/loto.txt","r");
+    float ball[49] = {0},count = 0,frequency = 0,percent = 0;
+    fp=fopen("/tmp/loto1.txt","r");
     while (fgets(buffer,sizeof(buffer),fp) != NULL)
     {
         sscanf(buffer,"%s\t%s\t%s\t%s",time,day,number,other);
         sscanf(number,"%[^,],%[^,],%[^,],%[^,],%[^,],%[^,]",one,two,three,four,five,six);
 
-        printf("%02d (%.2f %),%02d (%.2f %),%02d (%.2f %),%02d (%.2f %),%02d (%.2f %),%02d (%.2f %) [%.2f %] %02d (%.2f %)\n",atoi(one),(ball[atoi(one)]/count)*100,atoi(two),(ball[atoi(two)]/count)*100,atoi(three),(ball[atoi(three)]/count)*100,atoi(four),(ball[atoi(four)]/count)*100,atoi(five),(ball[atoi(five)]/count)*100,atoi(six),(ball[atoi(six)]/count)*100,((ball[atoi(one)]/count)*100+(ball[atoi(two)]/count)*100+(ball[atoi(three)]/count)*100+(ball[atoi(four)]/count)*100+(ball[atoi(five)]/count)*100+(ball[atoi(six  )]/count)*100)/6,atoi(other),(ball[atoi(other)]/count)*100);
+        printf("%s %02d [%.0f (%.2f %)],%02d [%.0f (%.2f %)],%02d [%.0f (%.2f %)],%02d [%.0f (%.2f %)],%02d [%.0f (%.2f %)],%02d [%.0f (%.2f %)] {%.2f %} %02d [%.0f (%.2f %)] %.2f %\n",time,atoi(one),ball[atoi(one)],(ball[atoi(one)]/(count*7))*100,atoi(two),ball[atoi(two)],(ball[atoi(two)]/(count*7))*100,atoi(three),ball[atoi(three)],(ball[atoi(three)]/(count*7))*100,atoi(four),ball[atoi(four)],(ball[atoi(four)]/(count*7))*100,atoi(five),ball[atoi(five)],(ball[atoi(five)]/(count*7))*100,atoi(six),ball[atoi(six)],(ball[atoi(six)]/(count*7))*100,((ball[atoi(one)]/(count*7))*100+(ball[atoi(two)]/(count*7))*100+(ball[atoi(three)]/(count*7))*100+(ball[atoi(four)]/(count*7))*100+(ball[atoi(five)]/(count*7))*100+(ball[atoi(six)]/(count*7))*100)/6,atoi(other),ball[atoi(other)],(ball[atoi(other)]/(count*7))*100,((ball[atoi(one)]/(count*7))*100+(ball[atoi(two)]/(count*7))*100+(ball[atoi(three)]/(count*7))*100+(ball[atoi(four)]/(count*7))*100+(ball[atoi(five)]/(count*7))*100+(ball[atoi(six)]/(count*7))*100));
         ball[atoi(one)] +=1;
         ball[atoi(two)] +=1;
         ball[atoi(three)] +=1;
@@ -206,23 +281,94 @@ void statistics(void)
         count++;
     }
     fclose(fp);
-    printf("Total: \n");
+
+    printf("\n");
     for(i = 1;i < 50;i++)
     {    
-        printf("%02d = %.2f %\t",i,(ball[i]/count)*100); 
+        printf("%02d = %.0f (%.2f) %\t",i,ball[i],(ball[i]/(count*7))*100); 
+        frequency+=ball[i];
+        percent+=(ball[i]/(count*7))*100;
         if(i%4 == 0)
             printf("\n");
     }
+
     printf("\n");
+    printf("Total:  No. %.2f Frequency %.0f Percent %.2f % \n",count,frequency/49,percent/49);
+    printf("\n");
+}
+
+void search_menu(void)
+{
+    char buff[1024];
+    char *delim=",",*str;
+    int check,count;
+    while(1)
+    {    
+        check = 1;
+        count=0;
+        printf("\nPlease enter your number : \n");
+        printf("(Example : 1,2,3,4,5,6) \n");
+        printf("Your Number : ");
+        scanf("%s",buff);
+        str = strtok(buff,delim);
+        while(str != NULL)
+        {
+            if (atoi(str) < 0 || atoi(str) > 50){
+                check = 0;
+                printf("(%d) Enter Wrong!!\n",atoi(str));
+                break;
+            }
+            count++;
+            str = strtok(NULL,delim);
+        }
+
+        if (check == 1 && count == 6)
+        { 
+            comparison(buff);
+        }else
+            printf("Number amount wrong!!\n");
+    }
+}
+
+void link_list(void)
+{
+    FILE *fp;
+    struct loto *now;
+    char buffer[512];
+    int max = 0;
+
+    fp=fopen("/tmp/loto.txt","r");
+    while (fgets(buffer,sizeof(buffer),fp) != NULL)
+    {
+        if (creat_link(buffer) > max)
+            max = creat_link(buffer);
+    }
+    fclose(fp);
+}
+
+void comparison(char *str)
+{
+    if(head == NULL)
+        link_list();
 }
 
 void main( void )
 {
     char ch;
+    int file = 0;
+    FILE *fp;
+
     while(1)
     {   
         printf("1.Get Web Data.\n");
-        printf("2.Statistics.\n");
+        if(fp=fopen("/tmp/loto.txt","r"))
+        {    
+            file=1;
+            fclose(fp);
+        }
+        printf("2.Statistics.(%d)\n",file);
+        printf("3.Search Number.\n");
+        printf("D.DEBUG.\n");
         printf("E.Exit.\n");
         printf("Input Option : ");
         ch = getchar();
@@ -232,7 +378,16 @@ void main( void )
                 get_information();
                 break;
             case '2':
-                statistics(); 
+                if(file == 1)
+                    statistics(); 
+                else
+                    printf("\n Not File.");
+                break;
+            case '3':
+                search_menu();
+                break;
+            case 'D':
+                sort_list(); 
                 break;
             case 'E':
                 exit(1);
