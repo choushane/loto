@@ -9,9 +9,17 @@
 #include <errno.h>
 #include <arpa/inet.h> 
 
+
+# define TMP_FILE_NAME "lto1.txt"
+# define FILE_NAME "lto.txt"
+# define LTO539 "lto539"
+# define LTO649 "ltobig"
+# define LTO539_TOTAL 39
+# define LTO649_TOTAL 49
+# define MAXNO(__A__, __B__) ((__A__ > __B__) ? __A__ : __B__)
 static char* host = "www.pilio.idv.tw";
-static char *name = "/tmp/mac_access.h";
-static int number = 37,port = 80;
+static int number = 0,port = 80,total = 0;
+static char *mode = NULL;
 static char buff[4096],message[2048],data[2048];
 static int connfd = -1;
 static FILE *file;
@@ -85,13 +93,36 @@ char* str_change(char str[])
 
 void set_header(int count)
 {
-    sprintf(message,"GET /ltobig/list.asp?indexpage=%d HTTP/1.1\r\n",count);
+    sprintf(message,"GET /%s/list.asp?indexpage=%d HTTP/1.1\r\n",mode,count);
     strcat(message,"Host:www.pilio.idv.tw\r\n");
     strcat(message,"User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:29.0) Gecko/20100101 Firefox/29.0\r\n");
     strcat(message,"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n");
     strcat(message,"Accept-Language: zh-tw,zh;q=0.8,en-us;q=0.5,en;q=0.3\r\n");
     strcat(message,"Connection: keep-alive\r\n");
     strcat(message, "\r\n\r\n");
+}
+
+int get_total(void)
+{
+    FILE *fp;
+    int x = 0;
+    char ch[128],output[128];
+    char no_1[32],no_2[32],no_3[32],no_4[32],no_5[32],no_6[32];
+
+    fp=fopen("file","r");
+
+    while (fgets(buff,sizeof(buff),fp) != NULL)
+    {
+        if(strstr(buff,"list.asp?indexpage="))
+        {
+            if(strstr(buff,"target=\"_self\""))
+                continue;
+            sscanf(buff,"%*[^>]>%[^</a>]</a>",data);
+	    x = MAXNO(x,atoi(data));
+        }    
+    }
+    fclose(fp);
+    return x;
 }
 
 void save_file(void)
@@ -101,7 +132,7 @@ void save_file(void)
     char ch[128],output[128];
     char no_1[32],no_2[32],no_3[32],no_4[32],no_5[32],no_6[32];
 
-    fp=fopen("/tmp/file","r");
+    fp=fopen("file","r");
 
     while (fgets(buff,sizeof(buff),fp) != NULL)
     {
@@ -137,7 +168,7 @@ void save_file(void)
 void get_web(int sockfd)
 {
     FILE *fp;
-    fp=fopen("/tmp/file","w");
+    fp=fopen("file","w");
 
     for(;recv(sockfd, buff, sizeof(buff), 0);)
     {
@@ -152,8 +183,13 @@ void get_web(int sockfd)
 
 void get_information(void)
 {
-    int sockfd,i = 1;
-    file=fopen("/tmp/loto.txt","w");
+    int sockfd,i = 1,find = 1;
+    if(number == 0){
+	find = 0;
+	number = 1;
+	printf("Finding all page.....\n");
+    }	
+    file=fopen(FILE_NAME,"w");
     while( i <= number)
     {    
         if ((sockfd = open_tcp_client(host,port)) < 0 )
@@ -169,7 +205,6 @@ void get_information(void)
         memset(buff,0,sizeof(buff));
 
         set_header(i);
-        //printf("%s\n",message);
 
         if( send(sockfd, message, strlen(message), 0) == -1)
         {
@@ -181,8 +216,19 @@ void get_information(void)
         setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(struct timeval));
 
         get_web(sockfd); //get web information
-        save_file(); // save to /tmp/loto.txt
-        i++;
+
+	if(find)
+	{
+            save_file(); // save to /tmp/loto.txt
+            i++;
+	}else{
+	    number = get_total();	   
+	    if(number > 1)
+	    {
+		find = 1;
+	        printf("Get All Page : %d\n",number);
+	    }
+	}
     }
     fclose(file);
 
@@ -227,7 +273,7 @@ void sort_list(void)
     char buffer[512];
     int number = 1,max = 0,i;
 
-    fp=fopen("/tmp/loto.txt","r");
+    fp=fopen(FILE_NAME,"r");
     while (fgets(buffer,sizeof(buffer),fp) != NULL)
     {
         if (creat_link(buffer) > max)
@@ -235,7 +281,7 @@ void sort_list(void)
     }
     fclose(fp);
 
-    fp=fopen("/tmp/loto1.txt","w");
+    fp=fopen(TMP_FILE_NAME,"w");
     now=head;
     for(i = 1;i <= max;i++)
     {
@@ -263,7 +309,7 @@ void statistics(void)
     char one[4],two[4],three[4],four[4],five[4],six[4];
     int i;
     float ball[49] = {0},count = 0,frequency = 0,percent = 0;
-    fp=fopen("/tmp/loto1.txt","r");
+    fp=fopen(TMP_FILE_NAME,"r");
     while (fgets(buffer,sizeof(buffer),fp) != NULL)
     {
         sscanf(buffer,"%s\t%s\t%s\t%s",time,day,number,other);
@@ -283,7 +329,7 @@ void statistics(void)
     fclose(fp);
 
     printf("\n");
-    for(i = 1;i < 50;i++)
+    for(i = 1;i <= total;i++)
     {    
         printf("%02d = %.0f (%.2f) %\t",i,ball[i],(ball[i]/(count*7))*100); 
         frequency+=ball[i];
@@ -293,7 +339,7 @@ void statistics(void)
     }
 
     printf("\n");
-    printf("Total:  No. %.2f Frequency %.0f Percent %.2f % \n",count,frequency/49,percent/49);
+    printf("Total(%d):  No. %.2f Frequency %.0f Percent %.2f % \n",total,count,frequency/total,percent/total);
     printf("\n");
 }
 
@@ -337,7 +383,7 @@ void link_list(void)
     char buffer[512];
     int max = 0;
 
-    fp=fopen("/tmp/loto.txt","r");
+    fp=fopen(FILE_NAME,"r");
     while (fgets(buffer,sizeof(buffer),fp) != NULL)
     {
         if (creat_link(buffer) > max)
@@ -352,22 +398,51 @@ void comparison(char *str)
         link_list();
 }
 
+void choose_mode(char **show)
+{
+    char ch = '0';
+    printf("Choose Mode\n");
+    printf("A) : 49-6\n");
+    printf("B) : 39-5\n");
+    do{
+	ch = getchar();
+	switch(ch)
+	{    
+	    case 'A':
+		mode = LTO649;
+		*show = "49-6";
+		total = LTO649_TOTAL;
+		break;
+	    case 'B':
+		mode = LTO539;
+		*show = "39-5";
+		total = LTO539_TOTAL;
+		break;
+	}
+    }while(ch == 'A' || ch == 'B');
+}
+
 void main( void )
 {
     char ch;
+    char *show_mode = NULL;
     int file = 0;
-    FILE *fp;
+    FILE *fp = NULL;
 
     while(1)
     {   
+	if(!mode)
+	    choose_mode(&show_mode);
+	printf("Play Mode : %s \n",show_mode);
         printf("1.Get Web Data.\n");
-        if(fp=fopen("/tmp/loto.txt","r"))
+        if(fp=fopen(FILE_NAME,"r"))
         {    
             file=1;
             fclose(fp);
         }
         printf("2.Statistics.(%d)\n",file);
         printf("3.Search Number.\n");
+        printf("4.Choose Mode.\n");
         printf("D.DEBUG.\n");
         printf("E.Exit.\n");
         printf("Input Option : ");
@@ -386,6 +461,9 @@ void main( void )
             case '3':
                 search_menu();
                 break;
+            case '4':
+                choose_mode(&show_mode);
+                break;
             case 'D':
                 sort_list(); 
                 break;
@@ -396,5 +474,6 @@ void main( void )
                 printf("\n");
                 break;
         }
+	system("clear");
     }
 }
