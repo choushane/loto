@@ -14,11 +14,16 @@
 # define FILE_NAME "lto.txt"
 # define LTO539 "lto539"
 # define LTO649 "ltobig"
+# define LTO "lto"
+# define LTO539_NUM 5
+# define LTO649_NUM 6
+# define LTO_NUM 6
 # define LTO539_TOTAL 39
 # define LTO649_TOTAL 49
+# define LTO_TOTAL 38
 # define MAXNO(__A__, __B__) ((__A__ > __B__) ? __A__ : __B__)
 static char* host = "www.pilio.idv.tw";
-static int number = 0,port = 80,total = 0;
+static int number = 0,port = 80,total = 0,NUM = 0;
 static char *mode = NULL;
 static char buff[4096],message[2048],data[2048];
 static int connfd = -1;
@@ -71,8 +76,7 @@ int open_tcp_client(char *ip_addr, unsigned short int port)
 
 int close_tcp_client(int clifd) {
     if(clifd < 1) {
-        printf("Not a volid connection socket:%d\n", clifd);
-        return -1;
+        printf("Not a volid connection socket:%d\n", clifd);return -1;
     }
     close(clifd);
     connfd = -1;
@@ -249,13 +253,13 @@ int creat_link(char buffer[512])
 
     now->no=atoi(time);
     strncpy(now->date,day,strlen(day));
-    now->ball[0]=atoi(one);
-    now->ball[1]=atoi(two);
-    now->ball[2]=atoi(three);
-    now->ball[3]=atoi(four);
-    now->ball[4]=atoi(five);
-    now->ball[5]=atoi(six);
-    now->ball[6]=atoi(other);
+    now->ball[0] = atoi(one);
+    now->ball[1] = atoi(two);
+    now->ball[2] = atoi(three);
+    now->ball[3] = atoi(four);
+    now->ball[4] = atoi(five);
+    now->ball[5] = atoi(six);
+    now->ball[6] = atoi(other);
 
     if(head != NULL)
         now->next=head;
@@ -292,9 +296,6 @@ void sort_list(void)
                 fprintf(fp,"%04d\t%s\t%02d,%02d,%02d,%02d,%02d,%02d\t%02d\n",now->no,now->date,now->ball[0],now->ball[1],now->ball[2],now->ball[3],now->ball[4],now->ball[5],now->ball[6]);
                 break;
             }
-            //printf("now->no = %d\n",now->no);
-            //printf("now->date = %s\n",now->date);
-            //printf("now->ball = %d,%d,%d,%d,%d,%d [%d]\n",now->ball[0],now->ball[1],now->ball[2],now->ball[3],now->ball[4],now->ball[5],now->ball[6]);
             now=now->next;
         }
     }
@@ -302,20 +303,59 @@ void sort_list(void)
 
 }
 
-void statistics(void)
+float statistics_39(float *ball)
+{
+    FILE *fp; 
+    char buffer[512],time[8],day[8],number[32];
+    char one[4],two[4],three[4],four[4],five[4];
+    float count = 0;
+    fp=fopen(TMP_FILE_NAME,"r");
+    while (fgets(buffer,sizeof(buffer),fp) != NULL)
+    {
+        sscanf(buffer,"%s\t%s\t%s\t",time,day,number);
+        sscanf(number,"%[^,],%[^,],%[^,],%[^,],%[^,]",one,two,three,four,five);
+
+        printf("%s \n %02d [%.0f (%.2f %)],%02d [%.0f (%.2f %)],%02d [%.0f (%.2f %)],%02d [%.0f (%.2f %)],%02d [%.0f (%.2f %)] {%.2f %} , %.2f % \n\n",
+		      time,
+	atoi(one),ball[atoi(one)],(ball[atoi(one)]/(count*NUM))*100,
+	atoi(two),ball[atoi(two)],(ball[atoi(two)]/(count*NUM))*100,
+	atoi(three),ball[atoi(three)],(ball[atoi(three)]/(count*NUM))*100,
+	atoi(four),ball[atoi(four)],(ball[atoi(four)]/(count*NUM))*100,
+	atoi(five),ball[atoi(five)],(ball[atoi(five)]/(count*NUM))*100,
+	((ball[atoi(one)]/(count*NUM))*100+(ball[atoi(two)]/(count*NUM))*100+(ball[atoi(three)]/(count*NUM))*100+(ball[atoi(four)]/(count*NUM))*100+(ball[atoi(five)]/(count*NUM))*100),((ball[atoi(one)]/(count*NUM))*100+(ball[atoi(two)]/(count*NUM))*100+(ball[atoi(three)]/(count*NUM))*100+(ball[atoi(four)]/(count*NUM))*100+(ball[atoi(five)]/(count*NUM))*100)/NUM);
+        ball[atoi(one)] +=1;
+        ball[atoi(two)] +=1;
+        ball[atoi(three)] +=1;
+        ball[atoi(four)] +=1;
+        ball[atoi(five)] +=1;
+        count++;
+    }
+    fclose(fp);
+    return count;
+}
+
+float statistics_49(float *ball)
 {
     FILE *fp; 
     char buffer[512],time[8],day[8],number[32],other[4];
     char one[4],two[4],three[4],four[4],five[4],six[4];
     int i;
-    float ball[49] = {0},count = 0,frequency = 0,percent = 0;
+    float count = 0;
     fp=fopen(TMP_FILE_NAME,"r");
     while (fgets(buffer,sizeof(buffer),fp) != NULL)
     {
         sscanf(buffer,"%s\t%s\t%s\t%s",time,day,number,other);
         sscanf(number,"%[^,],%[^,],%[^,],%[^,],%[^,],%[^,]",one,two,three,four,five,six);
 
-        printf("%s %02d [%.0f (%.2f %)],%02d [%.0f (%.2f %)],%02d [%.0f (%.2f %)],%02d [%.0f (%.2f %)],%02d [%.0f (%.2f %)],%02d [%.0f (%.2f %)] {%.2f %} %02d [%.0f (%.2f %)] %.2f %\n",time,atoi(one),ball[atoi(one)],(ball[atoi(one)]/(count*7))*100,atoi(two),ball[atoi(two)],(ball[atoi(two)]/(count*7))*100,atoi(three),ball[atoi(three)],(ball[atoi(three)]/(count*7))*100,atoi(four),ball[atoi(four)],(ball[atoi(four)]/(count*7))*100,atoi(five),ball[atoi(five)],(ball[atoi(five)]/(count*7))*100,atoi(six),ball[atoi(six)],(ball[atoi(six)]/(count*7))*100,((ball[atoi(one)]/(count*7))*100+(ball[atoi(two)]/(count*7))*100+(ball[atoi(three)]/(count*7))*100+(ball[atoi(four)]/(count*7))*100+(ball[atoi(five)]/(count*7))*100+(ball[atoi(six)]/(count*7))*100)/6,atoi(other),ball[atoi(other)],(ball[atoi(other)]/(count*7))*100,((ball[atoi(one)]/(count*7))*100+(ball[atoi(two)]/(count*7))*100+(ball[atoi(three)]/(count*7))*100+(ball[atoi(four)]/(count*7))*100+(ball[atoi(five)]/(count*7))*100+(ball[atoi(six)]/(count*7))*100));
+        printf("%s \n %02d [%.0f (%.2f %)],%02d [%.0f (%.2f %)],%02d [%.0f (%.2f %)],%02d [%.0f (%.2f %)],%02d [%.0f (%.2f %)],%02d [%.0f (%.2f %)] {%.2f %} %02d [%.0f (%.2f %)] %.2f %\n\n",
+		      time,
+	atoi(one),ball[atoi(one)],(ball[atoi(one)]/(count*NUM))*100,
+	atoi(two),ball[atoi(two)],(ball[atoi(two)]/(count*NUM))*100,
+	atoi(three),ball[atoi(three)],(ball[atoi(three)]/(count*NUM))*100,
+	atoi(four),ball[atoi(four)],(ball[atoi(four)]/(count*NUM))*100,
+	atoi(five),ball[atoi(five)],(ball[atoi(five)]/(count*NUM))*100,
+	atoi(six),ball[atoi(six)],(ball[atoi(six)]/(count*NUM))*100,
+	((ball[atoi(one)]/(count*NUM))*100+(ball[atoi(two)]/(count*NUM))*100+(ball[atoi(three)]/(count*NUM))*100+(ball[atoi(four)]/(count*NUM))*100+(ball[atoi(five)]/(count*NUM))*100+(ball[atoi(six)]/(count*NUM))*100)/6,atoi(other),ball[atoi(other)],(ball[atoi(other)]/(count*NUM))*100,((ball[atoi(one)]/(count*NUM))*100+(ball[atoi(two)]/(count*NUM))*100+(ball[atoi(three)]/(count*NUM))*100+(ball[atoi(four)]/(count*NUM))*100+(ball[atoi(five)]/(count*NUM))*100+(ball[atoi(six)]/(count*NUM))*100));
         ball[atoi(one)] +=1;
         ball[atoi(two)] +=1;
         ball[atoi(three)] +=1;
@@ -323,17 +363,31 @@ void statistics(void)
         ball[atoi(five)] +=1;
         ball[atoi(six)] +=1;
         ball[atoi(other)] +=1;
-        //printf("%d,%d,%d,%d,%d,%d\n",atoi(one),atoi(two),atoi(three),atoi(four),atoi(five),atoi(six));
         count++;
     }
     fclose(fp);
+    return count;
+}
+
+void statistics(void)
+{
+    FILE *fp; 
+    int i;
+    float ball[49] = {0},count = 0,frequency = 0,percent = 0;
+
+    if (!strcmp(mode, LTO649))
+	count = statistics_49(&ball);
+    else if (!strcmp(mode, LTO539))
+	count = statistics_39(&ball);
+    //else if (!strcmp(mode,"38-6-10"))
+	//count = statistics_38(&ball);
 
     printf("\n");
     for(i = 1;i <= total;i++)
     {    
-        printf("%02d = %.0f (%.2f) %\t",i,ball[i],(ball[i]/(count*7))*100); 
+        printf("%02d = %.0f (%.2f) %\t",i,ball[i],(ball[i]/count)*100); 
         frequency+=ball[i];
-        percent+=(ball[i]/(count*7))*100;
+        percent+=(ball[i]/count)*100;
         if(i%4 == 0)
             printf("\n");
     }
@@ -359,7 +413,7 @@ void search_menu(void)
         str = strtok(buff,delim);
         while(str != NULL)
         {
-            if (atoi(str) < 0 || atoi(str) > 50){
+            if (atoi(str) < 0 || atoi(str) > total){
                 check = 0;
                 printf("(%d) Enter Wrong!!\n",atoi(str));
                 break;
@@ -396,14 +450,17 @@ void comparison(char *str)
 {
     if(head == NULL)
         link_list();
+
+
 }
 
 void choose_mode(char **show)
 {
-    char ch = '0';
+    char ch;
     printf("Choose Mode\n");
     printf("A) : 49-6\n");
     printf("B) : 39-5\n");
+    printf("C) : 38-6-10\n");
     do{
 	ch = getchar();
 	switch(ch)
@@ -412,14 +469,22 @@ void choose_mode(char **show)
 		mode = LTO649;
 		*show = "49-6";
 		total = LTO649_TOTAL;
+		NUM = LTO649_NUM;
 		break;
 	    case 'B':
 		mode = LTO539;
 		*show = "39-5";
 		total = LTO539_TOTAL;
+		NUM = LTO539_NUM;
+		break;
+	    case 'C':
+		mode = LTO;
+		*show = "38-6-10";
+		total = LTO_TOTAL;
+		NUM = LTO_NUM;
 		break;
 	}
-    }while(ch == 'A' || ch == 'B');
+    }while(ch == 'A' || ch == 'B' || ch == 'C');
 }
 
 void main( void )
@@ -453,9 +518,10 @@ void main( void )
                 get_information();
                 break;
             case '2':
-                if(file == 1)
+                if(file == 1){
                     statistics(); 
-                else
+		    exit(0);
+                }else
                     printf("\n Not File.");
                 break;
             case '3':
